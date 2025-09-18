@@ -1,27 +1,213 @@
-name: Playwright Tests
+name: Web Tests with Allure
+
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # needed for gh-pages deploy
+
+env:
+  NODE_VERSION: "20"
+  TEST_COMMAND: "npm run test:e2e"
+  PLATFORM: "web"
+  EMAIL_SUBJECT_PREFIX: "Playwright Automation"
+  PAGES_BASE_URL: ""
+
 jobs:
   test:
-    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-    - name: Install dependencies
-      run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npx playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Load .env.ci without a marketplace action (portable)
+      - name: Load .env.ci (shell)
+        if: ${{ hashFiles('.env.ci') != '' }}
+        run: |
+          set -e
+          echo "Loading .env.ci..."
+          while IFS='=' read -r key value; do
+            [[ -z "$key" ]] && continue
+            [[ "$key" =~ ^# ]] && continue
+            # export into GITHUB_ENV
+            echo "$key=${value}" >> "$GITHUB_ENV"
+          done < .env.ci
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: |
+          npx playwright install
+          sudo npx playwright install-deps
+
+      - name: Clean old Allure results and report
+        run: rm -rf allure-results allure-report analytics
+
+      - name: Run tests
+        run: ${{ env.TEST_COMMAND }}
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
+
+  host:
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Load .env.ci (shell)
+        if: ${{ hashFiles('.env.ci') != '' }}
+        run: |
+          set -e
+          echo "Loading .env.ci..."
+          while IFS='=' read -r key value; do
+            [[ -z "$key" ]] && continue
+            [[ "$key" =~ ^# ]] && continue
+            echo "$key=${value}" >> "$GITHUB_ENV"
+          done < .env.ci
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Allure CLI
+        run: npm install -g allure-commandline
+
+      - name: Download Allure results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
+
+      # --- NEW: fetch last published site (gh-pages) into _site ---
+      - name: Fetch previous published site
+        uses: actions/checkout@v3
+        with:
+          ref: gh-pages
+          path: _site
+        continue-on-error: true
+
+      # --- NEW: bring forward Allure history so trend widgets work ---
+      - name: Restore Allure history from previous run (if any)
+        run: |
+          if [ -d "_site/history" ]; then
+            echo "Found previous history; restoring to allure-results/history"
+            mkdir -p allure-results/history
+            cp -R _site/history/* allure-results/history/ || true
+          else
+            echo "No previous history found (first run or empty gh-pages)"
+          fi
+
+      # --- NEW: prepare analytics/history.json from previous run ---
+      - name: Prepare analytics store from previous run (if any)
+        run: |
+          mkdir -p analytics
+          if [ -f "_site/analytics/history.json" ]; then
+            echo "Restoring analytics/history.json from gh-pages"
+            cp _site/analytics/history.json analytics/history.json
+          else
+            echo "Seeding empty analytics/history.json"
+            echo "[]" > analytics/history.json
+          fi
+
+      - name: Generate Allure report
+        run: |
+          rm -rf allure-report
+          allure generate allure-results --clean -o allure-report
+          # ensure GitHub Pages doesn't run Jekyll (which can block assets)
+          touch allure-report/.nojekyll
+
+      - name: Build analytics history
+        run: |
+          node generate-analytics.js
+          mkdir -p allure-report/analytics
+          cp -f analytics/history.json allure-report/analytics/history.json
+        env:
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      
+      - name: Copy analytics dashboard into report
+        run: |
+          mkdir -p allure-report/analytics
+          cp -f analytics-dashboard/index.html allure-report/analytics/index.html
+          cp -f analytics-dashboard/viewer.js allure-report/analytics/viewer.js
+
+      - name: Add Analytics link into Allure navbar
+        run: |
+          cp -f analytics-dashboard/inject-analytics.js allure-report/analytics/inject-analytics.js
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = 'allure-report/index.html';
+          let html = fs.readFileSync(p, 'utf8');
+          if (!html.includes('analytics/inject-analytics.js')) {
+            html = html.replace('</body>', '  <script src="analytics/inject-analytics.js"></script>\n</body>');
+            fs.writeFileSync(p, html);
+            console.log('Injected analytics script into index.html');
+          } else {
+            console.log('Analytics script already present, skipping inject');
+          }
+          NODE
+
+      - name: Upload Allure report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+
+      - name: Deploy Allure report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: allure-report/
+          publish_branch: gh-pages
+          keep_files: true
+
+      - name: Create Report Summary (Slack optional)
+        if: always()
+        run: |
+          node create-summary.js --platform="${{ env.PLATFORM }}"
+        env:
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          PAGES_BASE_URL: ${{ env.PAGES_BASE_URL }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+
+      - name: Read email subject
+        id: read_subject
+        run: |
+          subj=$(cat email-subject.txt)
+          echo "subject=$subj" >> $GITHUB_OUTPUT
+
+      - name: Send email with report URL
+        if: always()
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v6
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "${{ steps.read_subject.outputs.subject }}"
+          to: ${{ secrets.EMAIL_RECIPIENT_LIST }}
+          cc: ${{ secrets.EMAIL_CC_LIST }}
+          from: ${{ secrets.EMAIL_USERNAME }}
+          content_type: text/html
+          html_body: file://email-body.html
