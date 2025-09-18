@@ -1,67 +1,69 @@
-// create-summary.js (ESM)
-// Reads Allure summary.json, optionally posts to Slack, and writes
-// email-body.txt, email-body.html, email-subject.txt.
+// create-summary.js (no external deps, ESM)
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { WebClient } from "@slack/web-api";
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import yargs from 'yargs/yargs';
-import { hideBin } from 'yargs/helpers';
-import { WebClient } from '@slack/web-api';
-
-// ___dirname shim (ESM)
+// __dirname shim (ESM)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --- args & env ---
-const argv = yargs(hideBin(process.argv)).argv;
-const PLATFORM = argv.platform || process.env.PLATFORM || 'web';
-const SLACK_TOKEN = process.env.SLACK_TOKEN || '';
-const SLACK_CHANNELS = (process.env.SLACK_CHANNEL || '')
-  .split(',').map(s => s.trim()).filter(Boolean);
+// --- tiny argv parser ---
+function getArg(name, def = "") {
+  const prefix = `--${name}=`;
+  for (const a of process.argv.slice(2)) {
+    if (a.startsWith(prefix)) return a.slice(prefix.length);
+    if (a === `--${name}`) return "true";
+  }
+  return def;
+}
 
-const repo = process.env.GITHUB_REPOSITORY || ''; // "owner/repo"
-const runId = process.env.GITHUB_RUN_ID || '';
-const [owner, repoName] = repo.split('/');
-const defaultPages = (owner && repoName)
-  ? `https://${owner}.github.io/${repoName}`
-  : '';
+// --- args & env ---
+const PLATFORM = getArg("platform", process.env.PLATFORM || "web");
+const SLACK_TOKEN = process.env.SLACK_TOKEN || "";
+const SLACK_CHANNELS = (process.env.SLACK_CHANNEL || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const repo = process.env.GITHUB_REPOSITORY || ""; // "owner/repo"
+const runId = process.env.GITHUB_RUN_ID || "";
+const [owner, repoName] = repo.split("/");
+const defaultPages =
+  owner && repoName ? `https://${owner}.github.io/${repoName}` : "";
 const PAGES_BASE_URL = process.env.PAGES_BASE_URL || defaultPages;
-const workflowUrl = (repo && runId)
-  ? `https://github.com/${repo}/actions/runs/${runId}`
-  : '';
+const workflowUrl = repo && runId ? `https://github.com/${repo}/actions/runs/${runId}` : "";
 
 // --- allure files ---
-const reportDir = path.resolve(__dirname, 'allure-report');
-const summaryFile = path.join(reportDir, 'widgets', 'summary.json');
+const reportDir = path.resolve(__dirname, "allure-report");
+const summaryFile = path.join(reportDir, "widgets", "summary.json");
 
 if (!fs.existsSync(summaryFile)) {
-  console.error('Allure summary file is missing. Ensure allure-report/widgets/summary.json exists.');
+  console.error("Allure summary file is missing. Run Allure report first.");
   process.exit(1);
 }
 
-const summaryData = JSON.parse(await fs.promises.readFile(summaryFile, 'utf-8'));
+const summaryData = JSON.parse(await fs.promises.readFile(summaryFile, "utf-8"));
 
-// --- extract stats (Allure 2 structure) ---
-const passed  = summaryData?.statistic?.passed  ?? 0;
-const failed  = summaryData?.statistic?.failed  ?? 0;
-const broken  = summaryData?.statistic?.broken  ?? 0;
+// --- extract stats ---
+const passed = summaryData?.statistic?.passed ?? 0;
+const failed = summaryData?.statistic?.failed ?? 0;
+const broken = summaryData?.statistic?.broken ?? 0;
 const skipped = summaryData?.statistic?.skipped ?? 0;
-const total   = summaryData?.statistic?.total   ?? (passed + failed + broken + skipped);
+const total =
+  summaryData?.statistic?.total ?? passed + failed + broken + skipped;
 const duration = formatHMS(summaryData?.time?.duration || 0);
 
-// Timestamps
 const nowDate = new Date();
 const now = formatDateTime(nowDate);
 const today = formatDateOnly(nowDate);
 
-// Links
-const reportUrl = PAGES_BASE_URL || '(report URL unavailable)';
-const debugUrl  = workflowUrl   || '(workflow URL unavailable)';
+const reportUrl = PAGES_BASE_URL || "(report URL unavailable)";
+const debugUrl = workflowUrl || "(workflow URL unavailable)";
 
-// ---------------- email (PLAIN) ----------------
-const emailBodyTxt =
-`Hello,
+// ---------------- email bodies ----------------
+const emailBodyTxt = `
+Hello,
 
 The automation test run is complete. Here's the summary:
 - Platform: ${PLATFORM}
@@ -80,12 +82,12 @@ ${debugUrl}
 
 Best regards,
 Automation Team
-`;
+`.trim() + "\n";
 
-// ---------------- email (HTML) ----------------
-const emailBodyHtml = `<!doctype html>
+const emailBodyHtml = `
+<!doctype html>
 <html>
-  <body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.45">
+  <body style="font-family:sans-serif;line-height:1.45">
     <p>Hello,</p>
     <p>The automation test run is complete. Here's the summary:</p>
     <ul>
@@ -97,21 +99,19 @@ const emailBodyHtml = `<!doctype html>
       <li>⚠️ <strong>Skipped:</strong> ${skipped}</li>
       <li><strong>Duration:</strong> ${duration}</li>
     </ul>
-    <p>
-      <a href="${escapeHtml(reportUrl)}">Report for hackathon project</a>
-      <span style="color:#666">(${escapeHtml(now)})</span>
-    </p>
+    <p><a href="${escapeHtml(reportUrl)}">Report</a> <span style="color:#666">(${escapeHtml(now)})</span></p>
     <p><a href="${escapeHtml(debugUrl)}">Debug this run</a></p>
     <p>Best regards,<br/>Automation Team</p>
   </body>
 </html>
-`;
+`.trim() + "\n";
 
-// Write files
-await fs.promises.writeFile('email-body.txt', emailBodyTxt, 'utf-8');
-await fs.promises.writeFile('email-body.html', emailBodyHtml, 'utf-8');
-await fs.promises.writeFile('email-subject.txt', `Playwright Automation – ${today}\n`, 'utf-8');
-console.log('email-body.txt, email-body.html, email-subject.txt created.');
+// write outputs
+await fs.promises.writeFile("email-body.txt", emailBodyTxt);
+await fs.promises.writeFile("email-body.html", emailBodyHtml);
+await fs.promises.writeFile("email-subject.txt", `Playwright Automation – ${today}\n`);
+
+console.log("email-body.txt, email-body.html, email-subject.txt created.");
 
 // ---------------- Slack (optional) ----------------
 if (SLACK_TOKEN && SLACK_CHANNELS.length > 0) {
@@ -119,9 +119,9 @@ if (SLACK_TOKEN && SLACK_CHANNELS.length > 0) {
     `*Platform:* ${PLATFORM}`,
     `*Total:* ${total}  ✅ ${passed}  ❌ ${failed}  💔 ${broken}  ⚠️ ${skipped}`,
     `*Duration:* ${duration}`,
-    `<${reportUrl}|Report for hackathon project>  •  <${debugUrl}|Debug this run>`,
-    `_${now}_`
-  ].join('\n');
+    `<${reportUrl}|Report>  •  <${debugUrl}|Debug>`,
+    `_${now}_`,
+  ].join("\n");
 
   try {
     const client = new WebClient(SLACK_TOKEN);
@@ -130,40 +130,40 @@ if (SLACK_TOKEN && SLACK_CHANNELS.length > 0) {
       console.log(`Slack message sent to ${channel}`);
     }
   } catch (err) {
-    console.error('Error sending Slack message:', err?.message || err);
+    console.error("Error sending Slack:", err.message);
   }
 } else {
-  console.log('Slack token/channel not set. Skipping Slack notification.');
+  console.log("Slack token/channel not set. Skipping Slack notification.");
 }
 
 // --- helpers ---
 function formatDateTime(d) {
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = d.toLocaleString('en-US', { month: 'short' });
-  const year = d.getFullYear();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  const ss = String(d.getSeconds()).padStart(2, '0');
-  return `${day}-${month}-${year} ${hh}:${mm}:${ss}`;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = d.toLocaleString("en-US", { month: "short" });
+  const yy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  return `${dd}-${mm}-${yy} ${hh}:${mi}:${ss}`;
 }
 function formatDateOnly(d) {
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = d.toLocaleString('en-US', { month: 'short' });
-  const year = d.getFullYear();
-  return `${day}-${month}-${year}`;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = d.toLocaleString("en-US", { month: "short" });
+  const yy = d.getFullYear();
+  return `${dd}-${mm}-${yy}`;
 }
 function formatHMS(ms) {
-  const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return [h, m, sec].map(v => String(v).padStart(2, '0')).join(':');
+  const sec = Math.floor(ms / 1000);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 function escapeHtml(str) {
   return String(str)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
