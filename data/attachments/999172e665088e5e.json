@@ -1,0 +1,5 @@
+{
+  "trainPath": "/home/runner/work/testautothon/testautothon/data/TrainingData.jsonl",
+  "testPath": "/home/runner/work/testautothon/testautothon/data/TestData.jsonl",
+  "useAI": false
+}
