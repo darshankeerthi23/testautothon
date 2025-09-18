@@ -1,21 +1,24 @@
-// create-summary.js
-// Reads Allure 2 summary.json, posts optional Slack message, and writes
-// email-body.txt (plain), email-body.html (HTML with hyperlinks), and email-subject.txt.
+// create-summary.js (ESM)
+// Reads Allure summary.json, optionally posts to Slack, and writes
+// email-body.txt, email-body.html, email-subject.txt.
 
-const fs = require('fs');
-const path = require('path');
-const yargs = require('yargs/yargs');
-const { hideBin } = require('yargs/helpers');
-const { WebClient } = require('@slack/web-api');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import yargs from 'yargs/yargs';
+import { hideBin } from 'yargs/helpers';
+import { WebClient } from '@slack/web-api';
+
+// ___dirname shim (ESM)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // --- args & env ---
 const argv = yargs(hideBin(process.argv)).argv;
 const PLATFORM = argv.platform || process.env.PLATFORM || 'web';
 const SLACK_TOKEN = process.env.SLACK_TOKEN || '';
 const SLACK_CHANNELS = (process.env.SLACK_CHANNEL || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
+  .split(',').map(s => s.trim()).filter(Boolean);
 
 const repo = process.env.GITHUB_REPOSITORY || ''; // "owner/repo"
 const runId = process.env.GITHUB_RUN_ID || '';
@@ -33,34 +36,32 @@ const reportDir = path.resolve(__dirname, 'allure-report');
 const summaryFile = path.join(reportDir, 'widgets', 'summary.json');
 
 if (!fs.existsSync(summaryFile)) {
-  console.error('Allure summary file is missing. Ensure the Allure report is generated at allure-report/widgets/summary.json');
+  console.error('Allure summary file is missing. Ensure allure-report/widgets/summary.json exists.');
   process.exit(1);
 }
 
-const summaryData = JSON.parse(fs.readFileSync(summaryFile, 'utf-8'));
+const summaryData = JSON.parse(await fs.promises.readFile(summaryFile, 'utf-8'));
 
 // --- extract stats (Allure 2 structure) ---
-const passed = summaryData?.statistic?.passed ?? 0;
-const failed = summaryData?.statistic?.failed ?? 0;
-const broken = summaryData?.statistic?.broken ?? 0;
+const passed  = summaryData?.statistic?.passed  ?? 0;
+const failed  = summaryData?.statistic?.failed  ?? 0;
+const broken  = summaryData?.statistic?.broken  ?? 0;
 const skipped = summaryData?.statistic?.skipped ?? 0;
-const total = summaryData?.statistic?.total ?? (passed + failed + broken + skipped);
-
-// Duration
+const total   = summaryData?.statistic?.total   ?? (passed + failed + broken + skipped);
 const duration = formatHMS(summaryData?.time?.duration || 0);
 
-// Timestamps (use repo timezone if provided, else system)
+// Timestamps
 const nowDate = new Date();
-const now = formatDateTime(nowDate);            // e.g., 18-Sep-2025 00:39:55
-const today = formatDateOnly(nowDate);          // e.g., 18-Sep-2025
+const now = formatDateTime(nowDate);
+const today = formatDateOnly(nowDate);
 
-// Build links
+// Links
 const reportUrl = PAGES_BASE_URL || '(report URL unavailable)';
-const debugUrl = workflowUrl || '(workflow URL unavailable)';
+const debugUrl  = workflowUrl   || '(workflow URL unavailable)';
 
 // ---------------- email (PLAIN) ----------------
-const emailBodyTxt = `
-Hello,
+const emailBodyTxt =
+`Hello,
 
 The automation test run is complete. Here's the summary:
 - Platform: ${PLATFORM}
@@ -79,11 +80,10 @@ ${debugUrl}
 
 Best regards,
 Automation Team
-`.trim() + '\n';
+`;
 
 // ---------------- email (HTML) ----------------
-const emailBodyHtml = `
-<!doctype html>
+const emailBodyHtml = `<!doctype html>
 <html>
   <body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.45">
     <p>Hello,</p>
@@ -97,53 +97,44 @@ const emailBodyHtml = `
       <li>⚠️ <strong>Skipped:</strong> ${skipped}</li>
       <li><strong>Duration:</strong> ${duration}</li>
     </ul>
-
     <p>
       <a href="${escapeHtml(reportUrl)}">Report for hackathon project</a>
       <span style="color:#666">(${escapeHtml(now)})</span>
     </p>
-
-    <p>
-      <a href="${escapeHtml(debugUrl)}">Debug this run</a>
-    </p>
-
+    <p><a href="${escapeHtml(debugUrl)}">Debug this run</a></p>
     <p>Best regards,<br/>Automation Team</p>
   </body>
 </html>
-`.trim() + '\n';
+`;
 
-// ---------------- Slack message ----------------
-// Use Slack mrkdwn link format: <url|text>
-const slackText = [
-  `*Platform:* ${PLATFORM}`,
-  `*Total:* ${total}  ✅ ${passed}  ❌ ${failed}  💔 ${broken}  ⚠️ ${skipped}`,
-  `*Duration:* ${duration}`,
-  `<${reportUrl}|Report for hackathon project>  •  <${debugUrl}|Debug this run>`,
-  `_${now}_`
-].join('\n');
-
-// Write files first
-fs.writeFileSync('email-body.txt', emailBodyTxt);
-fs.writeFileSync('email-body.html', emailBodyHtml);
-fs.writeFileSync('email-subject.txt', `Playwright Automation – ${today}\n`);
+// Write files
+await fs.promises.writeFile('email-body.txt', emailBodyTxt, 'utf-8');
+await fs.promises.writeFile('email-body.html', emailBodyHtml, 'utf-8');
+await fs.promises.writeFile('email-subject.txt', `Playwright Automation – ${today}\n`, 'utf-8');
 console.log('email-body.txt, email-body.html, email-subject.txt created.');
 
-// Optional Slack
-(async () => {
-  if (SLACK_TOKEN && SLACK_CHANNELS.length > 0) {
-    try {
-      const client = new WebClient(SLACK_TOKEN);
-      for (const channel of SLACK_CHANNELS) {
-        await client.chat.postMessage({ channel, text: slackText, mrkdwn: true });
-        console.log(`Slack message sent to ${channel}`);
-      }
-    } catch (err) {
-      console.error('Error sending Slack message:', err.message);
+// ---------------- Slack (optional) ----------------
+if (SLACK_TOKEN && SLACK_CHANNELS.length > 0) {
+  const slackText = [
+    `*Platform:* ${PLATFORM}`,
+    `*Total:* ${total}  ✅ ${passed}  ❌ ${failed}  💔 ${broken}  ⚠️ ${skipped}`,
+    `*Duration:* ${duration}`,
+    `<${reportUrl}|Report for hackathon project>  •  <${debugUrl}|Debug this run>`,
+    `_${now}_`
+  ].join('\n');
+
+  try {
+    const client = new WebClient(SLACK_TOKEN);
+    for (const channel of SLACK_CHANNELS) {
+      await client.chat.postMessage({ channel, text: slackText, mrkdwn: true });
+      console.log(`Slack message sent to ${channel}`);
     }
-  } else {
-    console.log('Slack token/channel not set. Skipping Slack notification.');
+  } catch (err) {
+    console.error('Error sending Slack message:', err?.message || err);
   }
-})();
+} else {
+  console.log('Slack token/channel not set. Skipping Slack notification.');
+}
 
 // --- helpers ---
 function formatDateTime(d) {
