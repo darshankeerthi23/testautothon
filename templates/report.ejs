@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Failure Triage Report</title>
+  <link rel="stylesheet" href="report.css">
+</head>
+<body>
+  <header>
+    <h1>Failure Triage Report</h1>
+    <p>Generated at <%= generatedAt %></p>
+    <div class="stats">
+      <div class="card"><div class="k">Total</div><div class="v"><%= total %></div></div>
+      <div class="card"><div class="k">Categories</div><div class="v"><%= Object.keys(byCategory).length %></div></div>
+      <div class="card"><div class="k">Components</div><div class="v"><%= Object.keys(byComponent).length %></div></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>By Category</h2>
+    <ul>
+      <% Object.entries(byCategory).forEach(([k,v]) => { %>
+        <li><strong><%= k %></strong>: <%= v %></li>
+      <% }) %>
+    </ul>
+  </section>
+
+  <section>
+    <h2>By Component</h2>
+    <ul>
+      <% Object.entries(byComponent).forEach(([k,v]) => { %>
+        <li><strong><%= k %></strong>: <%= v %></li>
+      <% }) %>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Samples</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Test ID</th><th>Suite</th><th>Category</th><th>Component</th><th>Ticket</th><th>Reasoning</th><th>Message</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% samples.forEach(r => { %>
+        <tr>
+          <td><%= r.test_id %></td>
+          <td><%= r.suite || '' %></td>
+          <td><%= r.category || '' %></td>
+          <td><%= r.suspected_component || '' %></td>
+          <td><%= r.correlated_ticket ? `${r.correlated_ticket} (${Math.round((r.correlation_score||0)*100)}%)` : '—' %></td>
+          <td><%= r.reasoning || '' %></td>
+          <td><pre><%= r.message %></pre></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </section>
+</body>
+</html>

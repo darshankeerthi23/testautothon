@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Failure Triage Report</title>
+  <link rel="stylesheet" href="report.css">
+</head>
+<body>
+  <header>
+    <h1>Failure Triage Report</h1>
+    <p>Generated at 2025-09-18T06:39:22.312Z</p>
+    <div class="stats">
+      <div class="card"><div class="k">Total</div><div class="v">15</div></div>
+      <div class="card"><div class="k">Categories</div><div class="v">5</div></div>
+      <div class="card"><div class="k">Components</div><div class="v">10</div></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>By Category</h2>
+    <ul>
+      
+        <li><strong>Data/Environment</strong>: 8</li>
+      
+        <li><strong>Unknown</strong>: 2</li>
+      
+        <li><strong>Timeout/Flaky</strong>: 2</li>
+      
+        <li><strong>Auth/Permissions</strong>: 2</li>
+      
+        <li><strong>Assertion/Expectation</strong>: 1</li>
+      
+    </ul>
+  </section>
+
+  <section>
+    <h2>By Component</h2>
+    <ul>
+      
+        <li><strong>Analytics &amp; Reporting</strong>: 3</li>
+      
+        <li><strong>Order Management</strong>: 1</li>
+      
+        <li><strong>Notifications &amp; Messaging</strong>: 3</li>
+      
+        <li><strong>User Accounts &amp; Auth</strong>: 2</li>
+      
+        <li><strong>Payment Gateway</strong>: 1</li>
+      
+        <li><strong>Customer Support &amp; Returns</strong>: 1</li>
+      
+        <li><strong>Promotions &amp; Discounts</strong>: 1</li>
+      
+        <li><strong>Inventory &amp; Stock Control</strong>: 1</li>
+      
+        <li><strong>Shipping &amp; Logistics</strong>: 1</li>
+      
+        <li><strong>Product Catalog</strong>: 1</li>
+      
+    </ul>
+  </section>
+
+  <section>
+    <h2>Samples</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Test ID</th><th>Suite</th><th>Category</th><th>Component</th><th>Ticket</th><th>Reasoning</th><th>Message</th>
+        </tr>
+      </thead>
+      <tbody>
+      
+        <tr>
+          <td>_Test_1</td>
+          <td></td>
+          <td>Data/Environment</td>
+          <td>Analytics &amp; Reporting</td>
+          <td>—</td>
+          <td>Nearest centroid: Data/Environment (score 0.44) | Top tokens: analytics, reporting, service, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_2</td>
+          <td></td>
+          <td>Unknown</td>
+          <td>Order Management</td>
+          <td>—</td>
+          <td>Nearest centroid: Unknown (score 0.32) | Top tokens: order, management, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_3</td>
+          <td></td>
+          <td>Timeout/Flaky</td>
+          <td>Notifications &amp; Messaging</td>
+          <td>—</td>
+          <td>Rule matched → Timeout/Flaky | Nearest centroid: Timeout/Flaky (score 0.76) | Top tokens: notifications, messaging, timeout, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_4</td>
+          <td></td>
+          <td>Auth/Permissions</td>
+          <td>User Accounts &amp; Auth</td>
+          <td>—</td>
+          <td>Nearest centroid: Auth/Permissions (score 0.42) | Top tokens: accounts, auth, user, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_5</td>
+          <td></td>
+          <td>Timeout/Flaky</td>
+          <td>Notifications &amp; Messaging</td>
+          <td>—</td>
+          <td>Nearest centroid: Timeout/Flaky (score 0.68) | Top tokens: notifications, messaging, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_6</td>
+          <td></td>
+          <td>Data/Environment</td>
+          <td>Payment Gateway</td>
+          <td>—</td>
+          <td>Rule matched → Data/Environment | Nearest centroid: Unknown (score 0.31) | Top tokens: gateway, payment, error, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_7</td>
+          <td></td>
+          <td>Data/Environment</td>
+          <td>Customer Support &amp; Returns</td>
+          <td>—</td>
+          <td>Nearest centroid: Data/Environment (score 0.38) | Top tokens: customer, support, returns, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_8</td>
+          <td></td>
+          <td>Unknown</td>
+          <td>Promotions &amp; Discounts</td>
+          <td>—</td>
+          <td>Nearest centroid: Unknown (score 0.29) | Top tokens: promotions, discounts, freshness, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_9</td>
+          <td></td>
+          <td>Data/Environment</td>
+          <td>Analytics &amp; Reporting</td>
+          <td>—</td>
+          <td>Nearest centroid: Data/Environment (score 0.46) | Top tokens: analytics, reporting, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_10</td>
+          <td></td>
+          <td>Data/Environment</td>
+          <td>Inventory &amp; Stock Control</td>
+          <td>—</td>
+          <td>Rule matched → Data/Environment | Nearest centroid: Unknown (score 0.38) | Top tokens: inventory, stock, control, error, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_11</td>
+          <td></td>
+          <td>Data/Environment</td>
+          <td>Notifications &amp; Messaging</td>
+          <td>—</td>
+          <td>Rule matched → Data/Environment | Nearest centroid: Timeout/Flaky (score 0.62) | Top tokens: notifications, messaging, error, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_12</td>
+          <td></td>
+          <td>Assertion/Expectation</td>
+          <td>Shipping &amp; Logistics</td>
+          <td>—</td>
+          <td>Nearest centroid: Assertion/Expectation (score 0.30) | Top tokens: shipping, logistics, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_13</td>
+          <td></td>
+          <td>Data/Environment</td>
+          <td>Product Catalog</td>
+          <td>—</td>
+          <td>Nearest centroid: Data/Environment (score 0.33) | Top tokens: product, catalog, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_14</td>
+          <td></td>
+          <td>Data/Environment</td>
+          <td>Analytics &amp; Reporting</td>
+          <td>—</td>
+          <td>Nearest centroid: Data/Environment (score 0.44) | Top tokens: analytics, reporting, service, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+        <tr>
+          <td>_Test_15</td>
+          <td></td>
+          <td>Auth/Permissions</td>
+          <td>User Accounts &amp; Auth</td>
+          <td>—</td>
+          <td>Nearest centroid: Auth/Permissions (score 0.42) | Top tokens: accounts, auth, user, to, fail</td>
+          <td><pre></pre></td>
+        </tr>
+      
+      </tbody>
+    </table>
+  </section>
+</body>
+</html>

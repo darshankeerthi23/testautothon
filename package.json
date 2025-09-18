@@ -1,0 +1,26 @@
+{
+  "name": "playwright-triage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "playwright install --with-deps",
+    "triage": "cross-env TRAIN_JSON=./data/TrainingData.jsonl TEST_JSON=./data/TestData.jsonl node --loader ts-node/esm node_modules/@playwright/test/cli.js test -g \"Triage pipeline\"",
+    "test": "playwright test",
+    "allure:report": "allure generate ./allure-results --clean -o ./allure-report && npx http-server ./allure-report -p 8080 -o"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.2",
+    "allure-commandline": "^2.34.1",
+    "allure-playwright": "^3.4.1",
+    "cross-env": "^7.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@slack/web-api": "^7.10.0",
+    "csv-parse": "^5.5.6",
+    "ejs": "^3.1.10",
+    "zod": "^3.23.8"
+  }
+}
