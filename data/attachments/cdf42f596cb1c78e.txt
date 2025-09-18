@@ -1,0 +1,1 @@
+Triage summary: total 15 | Data/Environment:8, Unknown:2, Timeout/Flaky:2, Auth/Permissions:2, Assertion/Expectation:1
