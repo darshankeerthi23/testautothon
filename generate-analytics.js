@@ -1,5 +1,10 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// __dirname shim for ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Paths
 const summaryPath = path.resolve(__dirname, 'allure-report', 'widgets', 'summary.json');
@@ -14,7 +19,7 @@ if (!fs.existsSync(summaryPath)) {
   process.exit(1);
 }
 
-const summaryData = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
+const summaryData = JSON.parse(await fs.promises.readFile(summaryPath, 'utf-8'));
 
 // Extract stats
 const stats = {
@@ -32,9 +37,9 @@ const stats = {
 let history = [];
 if (fs.existsSync(analyticsPath)) {
   try {
-    const existing = fs.readFileSync(analyticsPath, 'utf-8');
+    const existing = await fs.promises.readFile(analyticsPath, 'utf-8');
     history = JSON.parse(existing);
-  } catch (err) {
+  } catch {
     console.warn('Failed to parse existing analytics/history.json. Starting fresh.');
   }
 }
@@ -43,7 +48,9 @@ if (fs.existsSync(analyticsPath)) {
 history.push(stats);
 
 // Save updated history
-fs.writeFileSync(analyticsPath, JSON.stringify(history, null, 2));
+await fs.promises.mkdir(path.dirname(analyticsPath), { recursive: true });
+await fs.promises.writeFile(analyticsPath, JSON.stringify(history, null, 2));
+
 console.log('Analytics history updated successfully.');
 
 // Format duration helper
