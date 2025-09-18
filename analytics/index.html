@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Test Analytics</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; max-width: 1080px; }
+    header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; }
+    h1 { margin: 0; font-size: 1.4rem; }
+    a.link { text-decoration: none; padding: 6px 10px; border-radius: 8px; border:1px solid currentColor; }
+    .cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 16px 0; }
+    .card { padding: 12px 14px; border: 1px solid #ccc; border-radius: 12px; }
+    .small { opacity: .7; font-size: .9rem; }
+    canvas { width: 100%; height: 320px; }
+    .muted { opacity: .6; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Automation Analytics</h1>
+    <a class="link" id="reportLink" href="../">↩ Allure Report</a>
+  </header>
+
+  <div class="cards">
+    <div class="card">
+      <div class="small muted">Runs</div>
+      <div id="runsCount" style="font-size:1.6rem;font-weight:600">—</div>
+    </div>
+    <div class="card">
+      <div class="small muted">Pass Rate (last run)</div>
+      <div id="passRate" style="font-size:1.6rem;font-weight:600">—</div>
+    </div>
+    <div class="card">
+      <div class="small muted">Duration (last run)</div>
+      <div id="duration" style="font-size:1.6rem;font-weight:600">—</div>
+    </div>
+    <div class="card">
+      <div class="small muted">Open CI Run</div>
+      <div><a id="runUrl" target="_blank" rel="noopener">—</a></div>
+    </div>
+  </div>
+
+  <section class="card">
+    <h3 style="margin:0 0 8px 0;">Pass/Fail Trend</h3>
+    <canvas id="trendChart"></canvas>
+    <div class="small muted" id="rangeLabel"></div>
+  </section>
+
+  <section class="card">
+    <h3 style="margin:0 0 8px 0;">Last Run Breakdown</h3>
+    <canvas id="lastPie"></canvas>
+  </section>
+
+  <p class="small muted">Data source: <code>analytics/history.json</code>. This page is copied into <code>/allure-report/analytics/</code> on each CI run.</p>
+
+  <script src="./viewer.js" type="module"></script>
+</body>
+</html>
