@@ -1,0 +1,5 @@
+{
+  "trainPath": "/Users/darshankeerthir/testautothon/data/TrainingData.jsonl",
+  "testPath": "/Users/darshankeerthir/testautothon/data/TestData.jsonl",
+  "useAI": false
+}
